@@ -3,7 +3,11 @@
 package httpclient
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -74,4 +78,67 @@ func (c *Client) buildPath(service string, start, end int, args []string) (strin
 		p += "/"
 	}
 	return p, nil
+}
+
+// APIError 는 ECOS RESULT 응답 (INFO-200 제외).
+type APIError struct {
+	Code    string // 예: ERROR-100, INFO-100
+	Message string
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("ecos: [%s] %s", e.Code, e.Message)
+}
+
+// ErrNoData 는 INFO-200 (해당하는 데이터가 없습니다).
+var ErrNoData = errors.New("ecos: no data (INFO-200)")
+
+// resultEnvelope 는 ECOS 실패 응답 {"RESULT":{...}} 프로브.
+type resultEnvelope struct {
+	Result *struct {
+		Code    string `json:"CODE"`
+		Message string `json:"MESSAGE"`
+	} `json:"RESULT"`
+}
+
+// Get 은 path segment GET 후 out 으로 디코드한다.
+// 응답이 {"RESULT":...} 실패 형태면 INFO-200→ErrNoData, 그 외→*APIError.
+// 반환하는 어떤 에러에도 인증키가 노출되지 않는다.
+func (c *Client) Get(ctx context.Context, service string, start, end int, args []string, out any) error {
+	path, err := c.buildPath(service, start, end, args)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return fmt.Errorf("ecos: %s: %s", service, c.mask(err))
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("ecos: GET %s: %s", service, c.mask(err))
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("ecos: GET %s: %s", service, c.mask(err))
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("ecos: GET %s: http status %d", service, resp.StatusCode)
+	}
+	var env resultEnvelope
+	if json.Unmarshal(body, &env) == nil && env.Result != nil {
+		if env.Result.Code == "INFO-200" {
+			return ErrNoData
+		}
+		return &APIError{Code: env.Result.Code, Message: env.Result.Message}
+	}
+	if err := json.Unmarshal(body, out); err != nil {
+		return fmt.Errorf("ecos: decode %s: %s", service, c.mask(err))
+	}
+	return nil
+}
+
+// mask 는 에러 메시지에서 인증키를 지운다 (*url.Error 는 전체 URL 을 담으므로 필수).
+func (c *Client) mask(err error) string {
+	return strings.ReplaceAll(err.Error(), c.apiKey, "{API_KEY}")
 }
