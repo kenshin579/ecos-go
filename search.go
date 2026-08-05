@@ -77,7 +77,7 @@ const searchAllChunk = 1000
 // p.Page 는 무시된다. 페이지 경계에서 INFO-200 이 오면 수집분을 반환한다.
 func (c *Client) StatisticSearchAll(ctx context.Context, p SearchParams) ([]SearchRow, error) {
 	var all []SearchRow
-	for start := 1; ; start += searchAllChunk {
+	for start := 1; ; {
 		p.Page = Page{Start: start, End: start + searchAllChunk - 1}
 		res, err := c.StatisticSearch(ctx, p)
 		if err != nil {
@@ -90,5 +90,7 @@ func (c *Client) StatisticSearchAll(ctx context.Context, p SearchParams) ([]Sear
 		if len(res.Rows) == 0 || len(all) >= res.TotalCount {
 			return all, nil
 		}
+		// 요청 범위보다 적게 반환되는 경우에도 행을 건너뛰지 않도록 실수신 행 수만큼 전진.
+		start += len(res.Rows)
 	}
 }

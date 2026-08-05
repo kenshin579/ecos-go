@@ -140,5 +140,8 @@ func (c *Client) Get(ctx context.Context, service string, start, end int, args [
 
 // mask 는 에러 메시지에서 인증키를 지운다 (*url.Error 는 전체 URL 을 담으므로 필수).
 func (c *Client) mask(err error) string {
+	if c.apiKey == "" { // ReplaceAll 의 빈 문자열 치환(모든 문자 사이 삽입) 방어
+		return err.Error()
+	}
 	return strings.ReplaceAll(err.Error(), c.apiKey, "{API_KEY}")
 }

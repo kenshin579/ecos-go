@@ -18,6 +18,7 @@ const (
 )
 
 // Page 는 요청시작건수/요청종료건수 (건수 기반, 1부터). 제로값은 1~100.
+// 지정할 때는 Start/End 를 둘 다 지정한다 (한쪽만 지정하면 그대로 전달되어 ECOS 가 거부한다).
 type Page struct {
 	Start int
 	End   int
