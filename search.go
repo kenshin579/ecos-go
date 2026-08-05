@@ -69,3 +69,26 @@ func (c *Client) StatisticSearch(ctx context.Context, p SearchParams) (*SearchRe
 	}
 	return &SearchResult{TotalCount: out.Body.TotalCount, Rows: out.Body.Rows}, nil
 }
+
+// searchAllChunk 는 StatisticSearchAll 의 페이지 크기.
+const searchAllChunk = 1000
+
+// StatisticSearchAll 은 list_total_count 기준으로 전 페이지를 자동 수집한다.
+// p.Page 는 무시된다. 페이지 경계에서 INFO-200 이 오면 수집분을 반환한다.
+func (c *Client) StatisticSearchAll(ctx context.Context, p SearchParams) ([]SearchRow, error) {
+	var all []SearchRow
+	for start := 1; ; start += searchAllChunk {
+		p.Page = Page{Start: start, End: start + searchAllChunk - 1}
+		res, err := c.StatisticSearch(ctx, p)
+		if err != nil {
+			if errors.Is(err, ErrNoData) && all != nil {
+				return all, nil
+			}
+			return nil, err
+		}
+		all = append(all, res.Rows...)
+		if len(res.Rows) == 0 || len(all) >= res.TotalCount {
+			return all, nil
+		}
+	}
+}
