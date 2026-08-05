@@ -62,7 +62,7 @@ curl -s "$B/StatisticTableList/$K/json/en/1/3/"         -o "$FIX/table_list_en.j
 ls -la "$FIX"
 ```
 
-Expected: json 파일 13개 생성. `search_no_item.json` 의 결과(전체 항목 반환 여부)는 Task 6 문서의 "생략 시 전체 항목" 설명의 실측 근거가 된다 — 다르게 동작하면 문서를 실측에 맞게 수정.
+Expected: json 파일 12개 생성. `search_no_item.json` 의 결과(전체 항목 반환 여부)는 Task 6 문서의 "생략 시 전체 항목" 설명의 실측 근거가 된다 — 다르게 동작하면 문서를 실측에 맞게 수정.
 
 - [ ] **Step 2: S(반년)·SM(반월) 주기 실측**
 
