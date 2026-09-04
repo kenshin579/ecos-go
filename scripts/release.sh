@@ -70,10 +70,21 @@ import (
 )
 
 func main() {
-	cf, _ := zip.CheckDir(os.Args[1])
+	// CheckDir 자체가 실패하면(경로 오류·읽기 실패 등) zero value 가 돌아와 cf.Err() 이 nil 이다.
+	// 그대로 두면 파일을 한 개도 검사하지 않고 "OK (0 valid)" 로 통과해버리므로 err 와 Valid 개수를 모두 본다.
+	cf, err := zip.CheckDir(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "module file validation failed (CheckDir):")
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if err := cf.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "module file validation failed:")
 		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if len(cf.Valid) == 0 {
+		fmt.Fprintln(os.Stderr, "module file validation failed: no valid files found (검증이 헛돌았다)")
 		os.Exit(1)
 	}
 	fmt.Printf("module files OK (%d valid)\n", len(cf.Valid))
